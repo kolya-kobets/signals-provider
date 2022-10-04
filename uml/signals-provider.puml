@@ -13,17 +13,7 @@ package "Core" {
   {
     enum ReadStatus {
       BAD_FRAME
-      STREAM_END
-    }
-
-    ' (alignas(1)) in gccc __attribute__((packed, aligned(1)))
-    struct RawFrame  {
-    + magic_word : char[4]
-    + frame_counter : std::uint16_t
-    + source_id: std::uint8_t
-    + payload_type: std::uint8_t
-    + payload_size: std::uint32_t
-    + payload: std::byte[1]
+      OK
     }
 
     struct Frame {
@@ -32,7 +22,7 @@ package "Core" {
     + payload : std::variant<std::uint8_t, std::int16_t, std::int32_t, IEEE_754_float>
     }
 
-    struct NormalizedSignal {
+    struct Signal {
     + frame_counter : std::uint16_t
     + source_id: std::uint8_t
     + signal : IEEE_754_float normalized
@@ -50,35 +40,39 @@ package "Core" {
   $element(FrameHandler, "std::function<void(frame : const Frame&, status : ReadStatus)>", $size=10, $technology="c++")
 
   class FrameReader {
-  +FrameReader(handler : FrameHandler&)
-  -read_next(output : Frame&) : ReadStatus
+  +FrameReader(source: IDataSource&, handler : FrameHandler&)
   -m_frame_handler : FrameHandler
   -m_thread : std::thread
   -m_source : IDataSource&
   }
 
-  $element(SignalHandler, "std::function<void(frame : const NormalizedSignal&, status : ReadStatus)>", $size=10, $technology="c++")
+  $element(SignalHandler, "std::function<void(frame : const Signal&, status : ReadStatus)>", $size=10, $technology="c++")
 
   class FrameProcessor {
   +FrameProcessor(handler : SignalHandler&)
-  +process_next(output : Frame&) : void
+  +process_frame(output : Frame&, status : ReadStatus) : void
   -m_thread : std::thread
   -m_handler : SignalHandler
   }
 
 
   class Converter {
-  +convert(input : Frame, status: ReadStatus) : NormalizedSignal
+  +convert(input : Frame, status: ReadStatus) : Signal
   }
 
   ' Client listener
-  interface IClient {
-  +process(signal: const NormalizedSignal&, source_id : std::uint16_t): void
+  interface ISignalReceiver {
+  +process(signal: const Signal&, status: ReadStatus): void
   }
 
   class SignalStorage {
-  +process(signal: const NormalizedSignal&, source_id : std::uint16_t): void
+  +process(signal: const Signal&, status: ReadStatus): void
   }
+
+  class SignalLogger {
+  +process(signal: const Signal&, status: ReadStatus): void
+  }
+
 
   class Statistics
   {
@@ -106,10 +100,11 @@ FrameProcessor ..> Converter
 FrameProcessor -up-o SignalHandler
 Provider "1" --* "1 for each source" FrameProcessor
 Provider --* FrameReader
-Provider --* Statistics
 Provider --o IDataSource
-Provider "1" --o "n" IClient
+Provider "1" --o "n" ISignalReceiver
 Provider ..|> SignalHandler
 Provider ..|> FrameHandler
-SignalStorage .up.|> IClient
+SignalStorage .up.|> ISignalReceiver
+SignalLogger .up.|> ISignalReceiver
+Statistics .up.|> ISignalReceiver
 @enduml

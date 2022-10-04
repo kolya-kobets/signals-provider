@@ -67,7 +67,7 @@ add_library(signals_provider STATIC
     asynctaskprocessor.cpp
     idatasource.h
     compiler_ext.h
-    rawframe.h
+    base_types.h
     framereader.h
     framereader.cpp
     frameprocessor.h

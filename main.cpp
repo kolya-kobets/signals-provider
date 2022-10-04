@@ -21,7 +21,7 @@ int main()
     provider.register_client(&logger);
     provider.register_client(&storage);
     provider.run();
-    sleep(3);
+    sleep(4);
     provider.stop();
 }
     return 0;

@@ -1,5 +1,6 @@
 #include "framereader.h"
 #include "print.h"
+#include <thread>
 
 FrameReader::FrameReader(IDataSource& source, const FrameHandler& handler)
     : m_source(source)
@@ -18,9 +19,16 @@ void FrameReader::run()
     FrameHeader header = {};
     Frame::Payload payload;
     Frame frame;
+
+    using std::chrono::milliseconds;
+    using std::chrono::steady_clock;
+    using std::chrono::duration_cast;
+
+    const auto TIME_LIMIT = milliseconds(100);
     while(!m_stop) {
         //TODO: error handling
-        //TODO: limit time
+        auto start = steady_clock::now();
+
         read_header(header);
         read_payload(header.payload_type, payload);
 
@@ -29,6 +37,12 @@ void FrameReader::run()
         frame.payload = payload;
 
         m_handler(frame, ReadStatus::OK);
+        auto end = steady_clock::now();
+
+        auto diff = duration_cast<milliseconds>(end - start);
+        if(diff < TIME_LIMIT) {
+            std::this_thread::sleep_for(TIME_LIMIT- diff);
+        }
     }
     LOGI("FrameReader::run ended");
 }

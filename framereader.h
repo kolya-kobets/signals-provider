@@ -15,6 +15,8 @@ public:
 private:
     void run();
 
+    void find_header(FrameHeader& header, int& offset);
+
     ReadStatus read_header(FrameHeader& header);
     ReadStatus read_payload(std::uint8_t payload_type, Frame::Payload& payload);
 

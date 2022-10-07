@@ -3,9 +3,9 @@
 
 #include "base_types.h"
 #include "asynctaskprocessor.h"
-#include "idatasource.h"
+#include "bufferedreader.h"
 
-using FrameHandler = std::function<void (const Frame&, ReadStatus)>;
+using FrameHandler = std::function<void (const Frame&)>;
 
 class FrameReader
 {
@@ -15,14 +15,13 @@ public:
 private:
     void run();
 
-    void find_header(FrameHeader& header, int& offset);
-
     ReadStatus read_header(FrameHeader& header);
     ReadStatus read_payload(std::uint8_t payload_type, Frame::Payload& payload);
 
     void read(char* buffer, int size);
+    void find_good_frame();
 
-    IDataSource& m_source;
+    BufferedReader m_reader;
     FrameHandler m_handler;
     std::atomic_bool m_stop = false;
     AsyncTaskProcessor m_processor;

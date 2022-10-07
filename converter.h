@@ -6,7 +6,7 @@
 class Converter
 {
 public:
-    static Signal convert(const Frame& frame, ReadStatus status);
+    static Signal convert(const Frame& frame);
 };
 
 #endif // CONVERTER_H

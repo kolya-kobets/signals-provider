@@ -15,14 +15,14 @@ int main()
 //    });
 {
     TestDataSource dataSource;
-    SignalProvider provider(dataSource);
     SignalLogger logger;
     SignalStorage storage;
+
+    SignalProvider provider(dataSource);
     provider.register_client(&logger);
     provider.register_client(&storage);
     provider.run();
     sleep(4);
-    provider.stop();
 }
     return 0;
 }

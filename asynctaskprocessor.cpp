@@ -3,6 +3,9 @@
 #include "print.h"
 #include <boost/bind/bind.hpp>
 
+#undef CONTEXT
+#define CONTEXT "FRAMERECEIVER"
+
 AsyncTaskProcessor::AsyncTaskProcessor()
     : m_work(std::make_unique<boost::asio::io_service::work>(m_service)),
       m_thread(boost::bind(&boost::asio::io_service::run, &m_service))

@@ -12,7 +12,7 @@ package "Core" {
   package BaseTypes
   {
     enum ReadStatus {
-      BAD_FRAME
+      BAD_SIGNAL
       OK
     }
 
@@ -27,6 +27,15 @@ package "Core" {
     + source_id: std::uint8_t
     + signal : IEEE_754_float normalized
     }
+
+    struct FrameHeader <<packed, aligned(1)>> {
+    + magic_word : char[4] = WORD
+    + frame_counter : std::uint16_t
+    + source_id : std::uint8_t
+    + payload_type : std::uint8_t
+    + payload_size : std::uint32_t
+    }
+
   }
 
   interface IDataSource {
@@ -37,7 +46,15 @@ package "Core" {
   +read(data : char* , size: int) : int
   }
 
-  $element(FrameHandler, "std::function<void(frame : const Frame&, status : ReadStatus)>", $size=10, $technology="c++")
+  $element(FrameHandler, "std::function<void(frame : const Frame&)>", $size=10, $technology="c++")
+
+  class BufferedReader {
+  +FrameReader(source: IDataSource&)
+  +read(data : char* , size: int) : int
+  +rewind(offset: size_t) : void
+  +operator[](ind: size_t) : char
+  -m_source : IDataSource&
+  }
 
   class FrameReader {
   +FrameReader(source: IDataSource&, handler : FrameHandler&)
@@ -49,18 +66,18 @@ package "Core" {
   $element(SignalHandler, "std::function<void(frame : const Signal&, status : ReadStatus)>", $size=10, $technology="c++")
 
   class FrameProcessor {
-  +FrameProcessor(handler : SignalHandler&)
-  +process_frame(output : Frame&, status : ReadStatus) : void
+  +FrameProcessor(source_id : std::uint8_t, handler : const SignalHandler&)
+  +process_frame(output : Frame&) : void
   -m_thread : std::thread
   -m_handler : SignalHandler
   }
 
 
   class Converter {
-  +convert(input : Frame, status: ReadStatus) : Signal
+  +convert(input : Frame) : Signal
   }
 
-  ' Client listener
+  ' Client listener '
   interface ISignalReceiver {
   +process(signal: const Signal&, status: ReadStatus): void
   }
@@ -73,13 +90,7 @@ package "Core" {
   +process(signal: const Signal&, status: ReadStatus): void
   }
 
-
-  class Statistics
-  {
-  +add_frame(frame: const Frame&, ReadStatus : status) : void
-  }
-
-  class Provider {
+  class SignalProvider {
   +registerClient(client: IClient*):void
   }
 }
@@ -94,17 +105,18 @@ class TestDataSource {
 
 IDataSource <|.. DataSource
 IDataSource <|.. TestDataSource
-FrameReader -up-o IDataSource
+BufferedReader --o IDataSource
+FrameReader --* BufferedReader
 FrameReader -up-o FrameHandler
 FrameProcessor ..> Converter
 FrameProcessor -up-o SignalHandler
-Provider "1" --* "1 for each source" FrameProcessor
-Provider --* FrameReader
-Provider --o IDataSource
-Provider "1" --o "n" ISignalReceiver
-Provider ..|> SignalHandler
-Provider ..|> FrameHandler
+SignalProvider "1" --* "1 for each source" FrameProcessor
+SignalProvider --* FrameReader
+SignalProvider --o IDataSource
+SignalProvider "1" --o "n" ISignalReceiver
+SignalProvider ..|> SignalHandler
+SignalProvider ..|> FrameHandler
 SignalStorage .up.|> ISignalReceiver
 SignalLogger .up.|> ISignalReceiver
-Statistics .up.|> ISignalReceiver
+
 @enduml

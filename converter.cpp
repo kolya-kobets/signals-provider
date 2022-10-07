@@ -16,17 +16,12 @@ struct PayloadConverter
     }
 };
 
-Signal Converter::convert(const Frame& frame, ReadStatus status)
+Signal Converter::convert(const Frame& frame)
 {
-    Signal result = {
+    const Signal result = {
         .frame_counter = frame.frame_counter,
         .source_id = frame.source_id,
-        .signal = 0.f
+        .signal = std::visit(PayloadConverter(), frame.payload)
     };
-    if (status != ReadStatus::OK) {
-        return result;
-    }
-
-    result.signal = std::visit(PayloadConverter(), frame.payload);
     return result;
 }

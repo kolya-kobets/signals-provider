@@ -13,6 +13,7 @@ constexpr std::uint8_t PAYLOAD_TYPE2 = 2;
 constexpr std::uint8_t PAYLOAD_TYPE3 = 3;
 
 #define WORD {'H', 'E', 'A', 'D'}
+
 PACKED_STRUCT(FrameHeader)
 {
     char magic_word[4] = WORD;
@@ -32,7 +33,7 @@ struct Frame
 
 enum class ReadStatus
 {
-    BAD_FRAME, OK
+    BAD_SIGNAL, OK
 };
 
 struct Signal
@@ -48,7 +49,7 @@ struct Signal
 inline std::ostream& operator<<(std::ostream& stream, const ReadStatus& status)
 {
     switch(status) {
-    case ReadStatus::BAD_FRAME:
+    case ReadStatus::BAD_SIGNAL:
         stream << "BAD_FRAME";
         break;
     case ReadStatus::OK:

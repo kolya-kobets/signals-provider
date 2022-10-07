@@ -2,8 +2,11 @@
 #include "print.h"
 #include <thread>
 
+#undef CONTEXT
+#define CONTEXT "FRAMERECEIVER"
+
 FrameReader::FrameReader(IDataSource& source, const FrameHandler& handler)
-    : m_source(source)
+    : m_reader(source)
     , m_handler(handler)
 {
     m_processor.run_task([this](){run();});
@@ -16,6 +19,8 @@ FrameReader::~FrameReader()
 
 void FrameReader::run()
 {
+    LOGI("FrameReader::thread started");
+
     FrameHeader header = {};
     Frame::Payload payload;
     Frame frame;
@@ -26,8 +31,9 @@ void FrameReader::run()
 
     const auto TIME_LIMIT = milliseconds(100);
     while(!m_stop) {
-        //TODO: error handling
         auto start = steady_clock::now();
+
+        find_good_frame();
 
         read_header(header);
         read_payload(header.payload_type, payload);
@@ -36,7 +42,7 @@ void FrameReader::run()
         frame.source_id = header.source_id;
         frame.payload = payload;
 
-        m_handler(frame, ReadStatus::OK);
+        m_handler(frame);
         auto end = steady_clock::now();
 
         auto diff = duration_cast<milliseconds>(end - start);
@@ -44,7 +50,7 @@ void FrameReader::run()
             std::this_thread::sleep_for(TIME_LIMIT- diff);
         }
     }
-    LOGI("FrameReader::run ended");
+    LOGI("FrameReader::thread ended");
 }
 
 ReadStatus FrameReader::read_header(FrameHeader& header)
@@ -55,7 +61,6 @@ ReadStatus FrameReader::read_header(FrameHeader& header)
 
 ReadStatus FrameReader::read_payload(std::uint8_t payload_type, Frame::Payload& result)
 {
-    //std::uint8_t, std::int16_t, std::int32_t, boost::float32_t
     switch(payload_type) {
         case PAYLOAD_TYPE0: {
             std::uint8_t payload = 0;
@@ -87,11 +92,27 @@ ReadStatus FrameReader::read_payload(std::uint8_t payload_type, Frame::Payload& 
 
 void FrameReader::read(char* buffer, int size)
 {
-    char* ptr = buffer;
-    int remaining = size;
-    while(remaining > 0) {
-        int read_size = m_source.read(ptr, remaining);
-        ptr += read_size;
-        remaining -= read_size;
+    m_reader.read(buffer, size);
+    m_reader.rewind(size);
+}
+
+void FrameReader::find_good_frame()
+{
+    static constexpr char MAGIC_WORD[] = WORD;
+    static constexpr size_t SIZE = sizeof(MAGIC_WORD);
+    char word[SIZE] = "BAD";
+
+    int skipped = 0;
+    while(true)
+    {
+        m_reader.read(word, SIZE);
+        if(std::equal(word, word+SIZE, MAGIC_WORD)){
+            break;
+        }
+        m_reader.rewind(1);
+        skipped += 1;
+    }
+    if(skipped > 0) {
+        LOGI("Bad frames detected, skipped ", skipped, " bytes");
     }
 }

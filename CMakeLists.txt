@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(tech-task LANGUAGES CXX)
 
+set(CMAKE_CONFIGURATION_TYPES "Debug" CACHE STRING "" FORCE)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -81,6 +83,8 @@ add_library(signals_provider STATIC
     signalstorage.cpp
     signallogger.h
     signallogger.cpp
+    bufferedreader.h
+    bufferedreader.cpp
 )
 target_link_libraries(signals_provider PUBLIC Boost::thread ieee754)
 target_include_directories(signals_provider PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
